@@ -1,1 +1,6 @@
 # Enti pubblici da monitorare
+
+enti:
+  - nome: Istituto Superiore di Sanità
+    sigla: ISS
+    localita: Roma
