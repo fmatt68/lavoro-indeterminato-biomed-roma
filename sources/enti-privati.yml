@@ -1,0 +1,98 @@
+# Enti privati da monitorare
+# Includere esclusivamente posizioni con contratto
+# esplicitamente a tempo indeterminato, a Roma e dintorni.
+
+enti:
+
+  # Ospedali, policlinici e IRCCS privati
+
+  - nome: Fondazione Policlinico Universitario Agostino Gemelli IRCCS
+    sigla: Policlinico Gemelli
+    localita: Roma
+    categoria: irccs_privato
+
+  - nome: Ospedale Pediatrico Bambino Gesu IRCCS
+    sigla: Bambino Gesu
+    localita: Roma
+    categoria: irccs
+
+  - nome: Policlinico Universitario Campus Bio-Medico
+    sigla: Campus Bio-Medico
+    localita: Roma
+    categoria: policlinico_privato
+
+  # Universita non statali
+
+  - nome: Universita Cattolica del Sacro Cuore
+    sigla: UCSC
+    localita: Roma
+    categoria: universita_privata
+
+  - nome: Universita Campus Bio-Medico di Roma
+    sigla: UCBM
+    localita: Roma
+    categoria: universita_privata
+
+  # Fondazioni scientifiche
+
+  - nome: Fondazione AIRC per la ricerca sul cancro
+    sigla: AIRC
+    localita: Roma o lavoro da remoto compatibile
+    categoria: fondazione_scientifica
+
+  - nome: Fondazione Telethon
+    sigla: Telethon
+    localita: Roma
+    categoria: fondazione_scientifica
+
+  - nome: Fondazione Umberto Veronesi
+    sigla: Fondazione Veronesi
+    localita: Roma o lavoro da remoto compatibile
+    categoria: fondazione_scientifica
+
+  # Aziende farmaceutiche e biotecnologiche
+
+  - nome: IRBM
+    sigla: IRBM
+    localita: Pomezia
+    categoria: azienda_biotecnologica
+
+  - nome: Menarini Biotech
+    sigla: Menarini Biotech
+    localita: Pomezia
+    categoria: azienda_farmaceutica
+
+  - nome: Merck Serono
+    sigla: Merck
+    localita: Roma
+    categoria: azienda_farmaceutica
+
+  - nome: Pfizer
+    sigla: Pfizer
+    localita: Roma
+    categoria: azienda_farmaceutica
+
+  - nome: Bristol Myers Squibb
+    sigla: BMS
+    localita: Roma
+    categoria: azienda_farmaceutica
+
+  - nome: Johnson and Johnson
+    sigla: J&J
+    localita: Roma e area metropolitana
+    categoria: azienda_farmaceutica
+
+  - nome: AbbVie
+    sigla: AbbVie
+    localita: Roma e area metropolitana
+    categoria: azienda_farmaceutica
+
+  - nome: Angelini Pharma
+    sigla: Angelini
+    localita: Roma
+    categoria: azienda_farmaceutica
+
+  - nome: Sanofi
+    sigla: Sanofi
+    localita: Roma
+    categoria: azienda_farmaceutica
