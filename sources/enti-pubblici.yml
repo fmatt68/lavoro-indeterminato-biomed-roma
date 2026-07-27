@@ -8,3 +8,11 @@ enti:
   - nome: Consiglio Nazionale delle Ricerche
     sigla: CNR
     localita: Roma
+
+  - nome: Istituti Fisioterapici Ospitalieri
+    sigla: IFO
+    localita: Roma
+
+  - nome: Istituto Nazionale per le Malattie Infettive Lazzaro Spallanzani
+    sigla: INMI Spallanzani
+    localita: Roma
