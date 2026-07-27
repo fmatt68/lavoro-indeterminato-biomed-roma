@@ -1,18 +1,134 @@
 # Enti pubblici da monitorare
+# Includere esclusivamente posizioni a tempo indeterminato
+# accessibili a laureati in discipline biologiche, biotecnologiche,
+# farmaceutiche, biochimiche e affini.
+# Escludere le posizioni riservate ai laureati in Medicina e Chirurgia.
 
 enti:
+
+  # Enti pubblici di ricerca
+
   - nome: Istituto Superiore di Sanità
     sigla: ISS
     localita: Roma
+    categoria: ente_ricerca
 
   - nome: Consiglio Nazionale delle Ricerche
     sigla: CNR
+    localita: Roma e area metropolitana
+    categoria: ente_ricerca
+
+  - nome: Agenzia nazionale per le nuove tecnologie, l'energia e lo sviluppo economico sostenibile
+    sigla: ENEA
+    localita: Roma e Frascati
+    categoria: ente_ricerca
+
+  - nome: Consiglio per la ricerca in agricoltura e l'analisi dell'economia agraria
+    sigla: CREA
+    localita: Roma e area metropolitana
+    categoria: ente_ricerca
+
+  - nome: Istituto Nazionale per l'Assicurazione contro gli Infortuni sul Lavoro
+    sigla: INAIL
+    localita: Roma e Monte Porzio Catone
+    categoria: ente_ricerca
+
+  # Universita pubbliche
+
+  - nome: Sapienza Universita di Roma
+    sigla: Sapienza
     localita: Roma
+    categoria: universita
+
+  - nome: Universita degli Studi di Roma Tor Vergata
+    sigla: Tor Vergata
+    localita: Roma
+    categoria: universita
+
+  - nome: Universita degli Studi Roma Tre
+    sigla: Roma Tre
+    localita: Roma
+    categoria: universita
+
+  - nome: Universita degli Studi di Roma Foro Italico
+    sigla: Foro Italico
+    localita: Roma
+    categoria: universita
+
+  # IRCCS e istituti sanitari pubblici
 
   - nome: Istituti Fisioterapici Ospitalieri
     sigla: IFO
     localita: Roma
+    categoria: irccs
+
+  - nome: Istituto Nazionale Tumori Regina Elena
+    sigla: IRE
+    localita: Roma
+    categoria: irccs
+    ente_appartenenza: IFO
+
+  - nome: Istituto Dermatologico San Gallicano
+    sigla: ISG
+    localita: Roma
+    categoria: irccs
+    ente_appartenenza: IFO
 
   - nome: Istituto Nazionale per le Malattie Infettive Lazzaro Spallanzani
     sigla: INMI Spallanzani
     localita: Roma
+    categoria: irccs
+
+  # Aziende ospedaliere universitarie e pubbliche
+
+  - nome: Azienda Ospedaliero-Universitaria Policlinico Umberto I
+    sigla: Policlinico Umberto I
+    localita: Roma
+    categoria: azienda_ospedaliera
+
+  - nome: Azienda Ospedaliero-Universitaria Sant'Andrea
+    sigla: AOU Sant'Andrea
+    localita: Roma
+    categoria: azienda_ospedaliera
+
+  - nome: Fondazione Policlinico Tor Vergata
+    sigla: PTV
+    localita: Roma
+    categoria: policlinico_pubblico
+
+  - nome: Azienda Ospedaliera San Camillo Forlanini
+    sigla: San Camillo Forlanini
+    localita: Roma
+    categoria: azienda_ospedaliera
+
+  # Aziende sanitarie locali
+
+  - nome: Azienda Sanitaria Locale Roma 1
+    sigla: ASL Roma 1
+    localita: Roma
+    categoria: asl
+
+  - nome: Azienda Sanitaria Locale Roma 2
+    sigla: ASL Roma 2
+    localita: Roma
+    categoria: asl
+
+  - nome: Azienda Sanitaria Locale Roma 3
+    sigla: ASL Roma 3
+    localita: Roma
+    categoria: asl
+
+  - nome: Azienda Sanitaria Locale Roma 4
+    sigla: ASL Roma 4
+    localita: Roma e area metropolitana
+    categoria: asl
+
+  - nome: Azienda Sanitaria Locale Roma 5
+    sigla: ASL Roma 5
+    localita: Roma e area metropolitana
+    categoria: asl
+
+  - nome: Azienda Sanitaria Locale Roma 6
+    sigla: ASL Roma 6
+    localita: Castelli Romani e area metropolitana
+    categoria: asl
