@@ -1,0 +1,44 @@
+# Criteri obbligatori per includere una posizione
+
+contratto:
+  solo_tempo_indeterminato: true
+  escludi_se_non_specificato: true
+
+localita:
+  - Roma
+  - Citta metropolitana di Roma
+  - comuni limitrofi
+
+titoli_di_studio_ammessi:
+  - Biologia
+  - Scienze biologiche
+  - Biotecnologie
+  - Biotecnologie mediche
+  - Biotecnologie farmaceutiche
+  - Farmacia
+  - Chimica e tecnologia farmaceutiche
+  - Biochimica
+  - discipline scientifiche affini
+
+profili_esclusi:
+  - dirigente medico
+  - medico
+  - medico chirurgo
+
+contratti_esclusi:
+  - tempo determinato
+  - assegno di ricerca
+  - borsa di ricerca
+  - borsa di studio
+  - dottorato
+  - postdoc
+  - fellowship
+  - collaborazione
+  - consulenza
+  - tirocinio
+  - stage
+  - partita IVA
+
+regola_finale:
+  includi_solo_se_verificato: true
+  in_caso_di_dubbio: escludi
