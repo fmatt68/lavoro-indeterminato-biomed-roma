@@ -1,0 +1,23 @@
+name: Controllo concorsi ISS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  controllo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica il repository
+        uses: actions/checkout@v4
+
+      - name: Configura Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installa le dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Controlla i concorsi ISS
+        run: python controlla_concorsi.py
