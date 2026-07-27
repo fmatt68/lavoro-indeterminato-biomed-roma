@@ -12,6 +12,8 @@ enti:
     sigla: ISS
     localita: Roma
     categoria: ente_ricerca
+    priorita: massima
+    monitoraggio: giornaliero
 
   - nome: Consiglio Nazionale delle Ricerche
     sigla: CNR
