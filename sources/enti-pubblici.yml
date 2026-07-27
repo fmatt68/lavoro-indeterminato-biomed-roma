@@ -4,3 +4,7 @@ enti:
   - nome: Istituto Superiore di Sanità
     sigla: ISS
     localita: Roma
+
+  - nome: Consiglio Nazionale delle Ricerche
+    sigla: CNR
+    localita: Roma
