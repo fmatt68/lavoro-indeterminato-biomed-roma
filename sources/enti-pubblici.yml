@@ -14,6 +14,7 @@ enti:
     categoria: ente_ricerca
     priorita: massima
     monitoraggio: giornaliero
+    url_concorsi: https://www.iss.it/at-bandi-di-concorso
 
   - nome: Consiglio Nazionale delle Ricerche
     sigla: CNR
