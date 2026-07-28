@@ -1,5 +1,7 @@
+import csv
 import re
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
@@ -7,6 +9,8 @@ from bs4 import BeautifulSoup
 
 
 URL_ISS = "https://www.iss.it/at-bandi-di-concorso"
+
+FILE_ESCLUSIONI = Path("data/posizioni-escluse.csv")
 
 INTESTAZIONI = {
     "User-Agent": (
@@ -97,6 +101,38 @@ def scarica_pagina(url):
         return None
 
 
+def carica_codici_esclusi():
+    codici_esclusi = set()
+
+    if not FILE_ESCLUSIONI.exists():
+        print(
+            "Avviso: il file delle esclusioni non è stato trovato."
+        )
+        return codici_esclusi
+
+    try:
+        with FILE_ESCLUSIONI.open(
+            mode="r",
+            encoding="utf-8-sig",
+            newline="",
+        ) as file_csv:
+            lettore = csv.DictReader(file_csv)
+
+            for riga in lettore:
+                codice = riga.get("codice", "").strip().upper()
+
+                if codice:
+                    codici_esclusi.add(codice)
+
+    except (OSError, csv.Error) as errore:
+        print(
+            "Avviso: impossibile leggere il file delle esclusioni."
+        )
+        print(f"Dettaglio tecnico: {errore}")
+
+    return codici_esclusi
+
+
 def posizione_ammessa(testo):
     testo_normalizzato = normalizza_testo(testo)
 
@@ -179,14 +215,15 @@ def controlla_pagina_inpa(url):
     }
 
 
-def trova_concorsi_iss():
+def trova_concorsi_iss(codici_esclusi):
     risposta = scarica_pagina(URL_ISS)
 
     if risposta is None:
-        return []
+        return [], []
 
     pagina = BeautifulSoup(risposta.text, "html.parser")
-    risultati = []
+    nuovi_risultati = []
+    gia_esaminati = []
     codici_gia_visti = set()
 
     for collegamento in pagina.find_all("a", href=True):
@@ -211,6 +248,10 @@ def trova_concorsi_iss():
 
         codici_gia_visti.add(codice)
 
+        if codice in codici_esclusi:
+            gia_esaminati.append(codice)
+            continue
+
         fonte_iss = urljoin(
             URL_ISS,
             collegamento["href"],
@@ -226,7 +267,7 @@ def trova_concorsi_iss():
                 "scadenza": None,
             }
 
-        risultati.append(
+        nuovi_risultati.append(
             {
                 "codice": codice,
                 "titolo": titolo,
@@ -237,7 +278,7 @@ def trova_concorsi_iss():
             }
         )
 
-    return risultati
+    return nuovi_risultati, gia_esaminati
 
 
 def stampa_risultato(posizione, numero=None):
@@ -269,7 +310,16 @@ def stampa_risultato(posizione, numero=None):
 def controlla_iss():
     print("Controllo dei concorsi ISS in corso...")
 
-    risultati = trova_concorsi_iss()
+    codici_esclusi = carica_codici_esclusi()
+
+    print(
+        "Concorsi presenti nel registro delle esclusioni: "
+        f"{len(codici_esclusi)}"
+    )
+
+    risultati, gia_esaminati = trova_concorsi_iss(
+        codici_esclusi
+    )
 
     aperti = [
         posizione
@@ -283,41 +333,53 @@ def controlla_iss():
         if posizione["stato"] == "da_verificare"
     ]
 
-    esclusi = [
+    chiusi_o_scaduti = [
         posizione
         for posizione in risultati
         if posizione["stato"] in ["chiuso", "scaduto"]
     ]
 
     print()
-    print(f"Concorsi ISS aperti: {len(aperti)}")
+    print(
+        "Concorsi ISS già esaminati e ignorati: "
+        f"{len(gia_esaminati)}"
+    )
+
+    for codice in sorted(gia_esaminati):
+        print(f"- {codice}")
+
+    print()
+    print(f"Nuovi concorsi ISS aperti: {len(aperti)}")
 
     for numero, posizione in enumerate(aperti, start=1):
         stampa_risultato(posizione, numero)
 
     print()
     print(
-        "Concorsi ISS ancora da verificare: "
+        "Nuovi concorsi ISS da verificare: "
         f"{len(da_verificare)}"
     )
 
-    for posizione in da_verificare:
-        stampa_risultato(posizione)
+    for numero, posizione in enumerate(
+        da_verificare,
+        start=1,
+    ):
+        stampa_risultato(posizione, numero)
 
     print()
     print(
-        "Concorsi esclusi perché chiusi o scaduti: "
-        f"{len(esclusi)}"
+        "Nuovi concorsi ISS chiusi o scaduti: "
+        f"{len(chiusi_o_scaduti)}"
     )
 
-    for posizione in esclusi:
+    for posizione in chiusi_o_scaduti:
         stampa_risultato(posizione)
 
     print()
     print(
-        "Nota: i concorsi aperti non vengono ancora inseriti "
-        "automaticamente nel CSV. Prima bisogna verificare nel "
-        "bando i titoli di studio e la pertinenza biomedica."
+        "Nota: i codici presenti nel registro delle esclusioni "
+        "non vengono riproposti. Gli eventuali nuovi concorsi "
+        "devono essere verificati prima dell'inserimento nel CSV."
     )
 
 
