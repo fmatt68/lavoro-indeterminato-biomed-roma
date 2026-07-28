@@ -11,6 +11,11 @@ FRASI_TEMPO_INDETERMINATO = [
 ]
 
 FRASI_ESCLUSE = [
+    "non a tempo indeterminato",
+    "personale non a tempo indeterminato",
+    "funzionario di amministrazione",
+    "profilo amministrativo",
+    "concorso riservato",
     "tempo determinato",
     "dirigente medico",
     "medico chirurgo",
