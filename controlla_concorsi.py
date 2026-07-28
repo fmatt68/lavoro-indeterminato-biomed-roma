@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -8,18 +8,20 @@ from bs4 import BeautifulSoup
 
 URL_ISS = "https://www.iss.it/at-bandi-di-concorso"
 
-FRASI_TEMPO_INDETERMINATO = [
-    "tempo indeterminato",
-    "a tempo indeterminato",
-]
+INTESTAZIONI = {
+    "User-Agent": (
+        "Mozilla/5.0 "
+        "(compatible; lavoro-indeterminato-biomed-roma/1.0)"
+    )
+}
 
 FRASI_ESCLUSE = [
     "non a tempo indeterminato",
     "personale non a tempo indeterminato",
+    "tempo determinato",
     "funzionario di amministrazione",
     "profilo amministrativo",
     "concorso riservato",
-    "tempo determinato",
     "dirigente medico",
     "medico chirurgo",
     "abilitazione alla professione di medico",
@@ -29,15 +31,6 @@ FRASI_ESCLUSE = [
     "collaborazione",
     "tirocinio",
     "stage",
-]
-
-FRASI_BANDO_CHIUSO = [
-    "stato: chiuso",
-    "stato chiuso",
-    "bando chiuso",
-    "candidature chiuse",
-    "termini scaduti",
-    "termine scaduto",
 ]
 
 MESI_ITALIANI = {
@@ -55,82 +48,40 @@ MESI_ITALIANI = {
     "dicembre": 12,
 }
 
-INTESTAZIONI = {
-    "User-Agent": (
-        "Mozilla/5.0 "
-        "(compatible; lavoro-indeterminato-biomed-roma/1.0)"
-    )
+PAGINE_INPA_CONOSCIUTE = {
+    "TI DT DRUE 2026 01": (
+        "https://www.inpa.gov.it/bandi-e-avvisi/"
+        "dettaglio-bando-avviso/"
+        "?concorso_id=ce01550874614308a37b131f9fbc9628"
+    ),
+    "TI DT DRAG 2026 01": (
+        "https://www.inpa.gov.it/bandi-e-avvisi/"
+        "dettaglio-bando-avviso/"
+        "?concorso_id=b98a3e13056344d1be89d39a4178f92a"
+    ),
+    "TI PT DRUE 2026 01": (
+        "https://www.inpa.gov.it/bandi-e-avvisi/"
+        "dettaglio-bando-avviso/"
+        "?concorso_id=a0b24821c41948eaaf0fc42f81559a46"
+    ),
+    "TI CTER CNT 2026 01": (
+        "https://www.inpa.gov.it/bandi-e-avvisi/"
+        "dettaglio-bando-avviso/"
+        "?concorso_id=8a93759556604f1d9a1831cadd496632"
+    ),
+    "TI DR CNS 2026 01": (
+        "https://www.inpa.gov.it/bandi-e-avvisi/"
+        "dettaglio-bando-avviso/"
+        "?concorso_id=7eebbbf678ed440e8b277ecb688fc041"
+    ),
 }
 
 
 def normalizza_testo(testo):
-    """Converte il testo in minuscolo e rimuove gli spazi duplicati."""
     return " ".join(testo.lower().split())
 
 
-def posizione_ammessa(testo):
-    """Controlla il contratto ed esclude i profili non pertinenti."""
-    testo_normalizzato = normalizza_testo(testo)
-
-    contratto_valido = any(
-        frase in testo_normalizzato
-        for frase in FRASI_TEMPO_INDETERMINATO
-    )
-
-    esclusione_presente = any(
-        frase in testo_normalizzato
-        for frase in FRASI_ESCLUSE
-    )
-
-    return contratto_valido and not esclusione_presente
-
-
-def estrai_data_scadenza(testo):
-    """Cerca nel testo una data di chiusura numerica o testuale."""
-    testo_normalizzato = normalizza_testo(testo)
-
-    modello_numerico = re.search(
-        r"(?:data chiusura candidature|scadenza)"
-        r"[:\s]+"
-        r"(\d{1,2})\d{1,2}\d{4}",
-        testo_normalizzato,
-    )
-
-    if modello_numerico:
-        giorno = int(modello_numerico.group(1))
-        mese = int(modello_numerico.group(2))
-        anno = int(modello_numerico.group(3))
-
-        try:
-            return datetime(anno, mese, giorno).date()
-        except ValueError:
-            return None
-
-    modello_testuale = re.search(
-        r"(?:data chiusura candidature|scadenza)"
-        r"[:\s]+"
-        r"(\d{1,2})\s+"
-        r"(gennaio|febbraio|marzo|aprile|maggio|giugno|"
-        r"luglio|agosto|settembre|ottobre|novembre|dicembre)"
-        r"\s+(\d{4})",
-        testo_normalizzato,
-    )
-
-    if modello_testuale:
-        giorno = int(modello_testuale.group(1))
-        mese = MESI_ITALIANI[modello_testuale.group(2)]
-        anno = int(modello_testuale.group(3))
-
-        try:
-            return datetime(anno, mese, giorno).date()
-        except ValueError:
-            return None
-
-    return None
-
-
 def scarica_pagina(url):
-    """Scarica una pagina senza interrompere il programma in caso di errore."""
     try:
         risposta = requests.get(
             url,
@@ -146,56 +97,62 @@ def scarica_pagina(url):
         return None
 
 
-def trova_link_inpa(link_iss):
-    """Cerca un collegamento InPA nella pagina ISS del concorso."""
-    risposta = scarica_pagina(link_iss)
+def posizione_ammessa(testo):
+    testo_normalizzato = normalizza_testo(testo)
 
-    if risposta is None:
-        return None
+    if "tempo indeterminato" not in testo_normalizzato:
+        return False
 
-    dominio_finale = urlparse(risposta.url).netloc.lower()
+    return not any(
+        frase in testo_normalizzato
+        for frase in FRASI_ESCLUSE
+    )
 
-    if "inpa.gov.it" in dominio_finale:
-        return risposta.url
 
-    pagina = BeautifulSoup(risposta.text, "html.parser")
-
-    for collegamento in pagina.find_all("a", href=True):
-        link = urljoin(risposta.url, collegamento["href"])
-        dominio = urlparse(link).netloc.lower()
-
-        if "inpa.gov.it" in dominio:
-            return link
-
+def estrai_codice_concorso(testo):
     risultato = re.search(
-        r"https?://(?:www\.)?inpa\.gov\.it/[^\s\"'<>]+",
-        risposta.text,
+        r"\bTI\s+[A-Z]+\s+[A-Z]+\s+\d{4}\s+\d{2}\b",
+        testo.upper(),
     )
 
     if risultato:
-        return risultato.group(0)
+        return " ".join(risultato.group(0).split())
 
     return None
 
 
-def controlla_stato_bando(link_iss):
-    """Controlla stato e scadenza sulla pagina InPA, quando disponibile."""
-    link_inpa = trova_link_inpa(link_iss)
+def estrai_scadenza(testo):
+    testo_normalizzato = normalizza_testo(testo)
 
-    if not link_inpa:
-        return {
-            "stato": "da_verificare",
-            "scadenza": None,
-            "link_verifica": link_iss,
-        }
+    risultato = re.search(
+        r"data chiusura candidature[:\s]+"
+        r"(\d{1,2})\s+"
+        r"(gennaio|febbraio|marzo|aprile|maggio|giugno|"
+        r"luglio|agosto|settembre|ottobre|novembre|dicembre)"
+        r"\s+(\d{4})",
+        testo_normalizzato,
+    )
 
-    risposta = scarica_pagina(link_inpa)
+    if not risultato:
+        return None
+
+    giorno = int(risultato.group(1))
+    mese = MESI_ITALIANI[risultato.group(2)]
+    anno = int(risultato.group(3))
+
+    try:
+        return datetime(anno, mese, giorno).date()
+    except ValueError:
+        return None
+
+
+def controlla_pagina_inpa(url):
+    risposta = scarica_pagina(url)
 
     if risposta is None:
         return {
             "stato": "da_verificare",
             "scadenza": None,
-            "link_verifica": link_inpa,
         }
 
     pagina = BeautifulSoup(risposta.text, "html.parser")
@@ -203,49 +160,34 @@ def controlla_stato_bando(link_iss):
         pagina.get_text(" ", strip=True)
     )
 
-    scadenza = estrai_data_scadenza(testo)
+    scadenza = estrai_scadenza(testo)
 
-    if any(frase in testo for frase in FRASI_BANDO_CHIUSO):
-        return {
-            "stato": "chiuso",
-            "scadenza": scadenza,
-            "link_verifica": risposta.url,
-        }
-
-    if scadenza and scadenza < datetime.now().date():
-        return {
-            "stato": "scaduto",
-            "scadenza": scadenza,
-            "link_verifica": risposta.url,
-        }
-
-    if scadenza:
-        return {
-            "stato": "aperto",
-            "scadenza": scadenza,
-            "link_verifica": risposta.url,
-        }
+    if "stato: chiuso" in testo or "stato chiuso" in testo:
+        stato = "chiuso"
+    elif scadenza and scadenza < datetime.now().date():
+        stato = "scaduto"
+    elif "stato: aperto" in testo or "stato aperto" in testo:
+        stato = "aperto"
+    elif scadenza:
+        stato = "aperto"
+    else:
+        stato = "da_verificare"
 
     return {
-        "stato": "da_verificare",
-        "scadenza": None,
-        "link_verifica": risposta.url,
+        "stato": stato,
+        "scadenza": scadenza,
     }
 
 
-def controlla_iss():
-    """Trova i possibili concorsi ISS a tempo indeterminato."""
-    print("Controllo dei concorsi ISS in corso...")
-
+def trova_concorsi_iss():
     risposta = scarica_pagina(URL_ISS)
 
     if risposta is None:
-        print("Il controllo ISS non può essere completato.")
-        return
+        return []
 
     pagina = BeautifulSoup(risposta.text, "html.parser")
     risultati = []
-    elementi_gia_visti = set()
+    codici_gia_visti = set()
 
     for collegamento in pagina.find_all("a", href=True):
         contenitore = collegamento.find_parent(
@@ -253,109 +195,129 @@ def controlla_iss():
         )
 
         if contenitore:
-            testo = contenitore.get_text(" ", strip=True)
+            titolo = contenitore.get_text(" ", strip=True)
         else:
-            testo = collegamento.get_text(" ", strip=True)
+            titolo = collegamento.get_text(" ", strip=True)
 
-        testo = " ".join(testo.split())
+        titolo = " ".join(titolo.split())
 
-        if not testo:
+        if not titolo or not posizione_ammessa(titolo):
             continue
 
-        if not posizione_ammessa(testo):
+        codice = estrai_codice_concorso(titolo)
+
+        if not codice or codice in codici_gia_visti:
             continue
 
-        link_iss = urljoin(URL_ISS, collegamento["href"])
+        codici_gia_visti.add(codice)
 
-        chiave = normalizza_testo(testo)
+        fonte_iss = urljoin(
+            URL_ISS,
+            collegamento["href"],
+        )
 
-        if chiave in elementi_gia_visti:
-            continue
+        pagina_inpa = PAGINE_INPA_CONOSCIUTE.get(codice)
 
-        elementi_gia_visti.add(chiave)
-
-        verifica = controlla_stato_bando(link_iss)
+        if pagina_inpa:
+            verifica = controlla_pagina_inpa(pagina_inpa)
+        else:
+            verifica = {
+                "stato": "da_verificare",
+                "scadenza": None,
+            }
 
         risultati.append(
             {
-                "titolo": testo,
-                "link_iss": link_iss,
-                "link_verifica": verifica["link_verifica"],
+                "codice": codice,
+                "titolo": titolo,
                 "stato": verifica["stato"],
                 "scadenza": verifica["scadenza"],
+                "fonte_iss": fonte_iss,
+                "pagina_inpa": pagina_inpa,
             }
         )
 
-    risultati_utili = [
-        risultato
-        for risultato in risultati
-        if risultato["stato"] not in ["chiuso", "scaduto"]
+    return risultati
+
+
+def stampa_risultato(posizione, numero=None):
+    print()
+
+    if numero is not None:
+        print(f"Risultato {numero}")
+
+    print(f"Codice: {posizione['codice']}")
+    print(f"Stato: {posizione['stato']}")
+
+    if posizione["scadenza"]:
+        print(
+            "Scadenza: "
+            f"{posizione['scadenza'].strftime('%d/%m/%Y')}"
+        )
+    else:
+        print("Scadenza: non rilevata automaticamente")
+
+    print(posizione["titolo"])
+    print(f"Fonte ISS: {posizione['fonte_iss']}")
+
+    if posizione["pagina_inpa"]:
+        print(f"Pagina InPA: {posizione['pagina_inpa']}")
+    else:
+        print("Pagina InPA: non ancora associata")
+
+
+def controlla_iss():
+    print("Controllo dei concorsi ISS in corso...")
+
+    risultati = trova_concorsi_iss()
+
+    aperti = [
+        posizione
+        for posizione in risultati
+        if posizione["stato"] == "aperto"
     ]
 
-    risultati_esclusi = [
-        risultato
-        for risultato in risultati
-        if risultato["stato"] in ["chiuso", "scaduto"]
+    da_verificare = [
+        posizione
+        for posizione in risultati
+        if posizione["stato"] == "da_verificare"
+    ]
+
+    esclusi = [
+        posizione
+        for posizione in risultati
+        if posizione["stato"] in ["chiuso", "scaduto"]
     ]
 
     print()
+    print(f"Concorsi ISS aperti: {len(aperti)}")
+
+    for numero, posizione in enumerate(aperti, start=1):
+        stampa_risultato(posizione, numero)
+
+    print()
     print(
-        "Possibili concorsi ISS da verificare: "
-        f"{len(risultati_utili)}"
+        "Concorsi ISS ancora da verificare: "
+        f"{len(da_verificare)}"
     )
 
-    for numero, posizione in enumerate(
-        risultati_utili,
-        start=1,
-    ):
-        print()
-        print(f"Risultato {numero}")
-        print(f"Stato: {posizione['stato']}")
-
-        if posizione["scadenza"]:
-            scadenza_formattata = posizione[
-                "scadenza"
-            ].strftime("%d/%m/%Y")
-
-            print(f"Scadenza: {scadenza_formattata}")
-        else:
-            print("Scadenza: non rilevata automaticamente")
-
-        print(posizione["titolo"])
-        print(f"Fonte ISS: {posizione['link_iss']}")
-        print(
-            "Pagina di verifica: "
-            f"{posizione['link_verifica']}"
-        )
+    for posizione in da_verificare:
+        stampa_risultato(posizione)
 
     print()
     print(
         "Concorsi esclusi perché chiusi o scaduti: "
-        f"{len(risultati_esclusi)}"
+        f"{len(esclusi)}"
     )
 
-    for posizione in risultati_esclusi:
-        print()
-        print(f"Escluso perché: {posizione['stato']}")
-
-        if posizione["scadenza"]:
-            scadenza_formattata = posizione[
-                "scadenza"
-            ].strftime("%d/%m/%Y")
-
-            print(f"Scadenza: {scadenza_formattata}")
-
-        print(posizione["titolo"])
-        print(
-            "Pagina di verifica: "
-            f"{posizione['link_verifica']}"
-        )
+    for posizione in esclusi:
+        stampa_risultato(posizione)
 
     print()
     print(
-        "Nota: i concorsi aperti o da verificare non vengono "
-        "inseriti automaticamente nel CSV. È ancora necessario "
-        "controllare i titoli di studio e la pertinenza biomedica."
+        "Nota: i concorsi aperti non vengono ancora inseriti "
+        "automaticamente nel CSV. Prima bisogna verificare nel "
+        "bando i titoli di studio e la pertinenza biomedica."
     )
 
 
