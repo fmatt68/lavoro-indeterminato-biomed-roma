@@ -1,12 +1,9 @@
-name: Controllo concorsi ISS
+name: Controllo ISS
 
 on:
   workflow_dispatch:
-
   schedule:
-    # GitHub Actions usa l'orario UTC.
-    # 05:00 UTC corrisponde alle 07:00 in Italia durante l'ora legale.
-    - cron: "0 5 * * *"
+    - cron: "7 5 * * *"
 
 jobs:
   controllo:
@@ -26,4 +23,3 @@ jobs:
 
       - name: Controlla i concorsi ISS
         run: python controlla_concorsi.py
-`
