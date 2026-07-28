@@ -64,19 +64,21 @@ INTESTAZIONI = {
 
 
 def normalizza_testo(testo):
+    """Converte il testo in minuscolo e rimuove gli spazi duplicati."""
     return " ".join(testo.lower().split())
 
 
 def posizione_ammessa(testo):
-    testo = normalizza_testo(testo)
+    """Controlla il contratto ed esclude i profili non pertinenti."""
+    testo_normalizzato = normalizza_testo(testo)
 
     contratto_valido = any(
-        frase in testo
+        frase in testo_normalizzato
         for frase in FRASI_TEMPO_INDETERMINATO
     )
 
     esclusione_presente = any(
-        frase in testo
+        frase in testo_normalizzato
         for frase in FRASI_ESCLUSE
     )
 
@@ -84,19 +86,20 @@ def posizione_ammessa(testo):
 
 
 def estrai_data_scadenza(testo):
-    testo = normalizza_testo(testo)
+    """Cerca nel testo una data di chiusura numerica o testuale."""
+    testo_normalizzato = normalizza_testo(testo)
 
     modello_numerico = re.search(
         r"(?:data chiusura candidature|scadenza)"
-        r"\d{1,2}\d{4}",
-        testo,
+        r"[:\s]+"
+        r"(\d{1,2})\d{1,2}\d{4}",
+        testo_normalizzato,
     )
 
     if modello_numerico:
-        giorno, mese, anno = map(
-            int,
-            modello_numerico.groups(),
-        )
+        giorno = int(modello_numerico.group(1))
+        mese = int(modello_numerico.group(2))
+        anno = int(modello_numerico.group(3))
 
         try:
             return datetime(anno, mese, giorno).date()
@@ -105,11 +108,12 @@ def estrai_data_scadenza(testo):
 
     modello_testuale = re.search(
         r"(?:data chiusura candidature|scadenza)"
-        r"[:\s]+(\d{1,2})\s+"
+        r"[:\s]+"
+        r"(\d{1,2})\s+"
         r"(gennaio|febbraio|marzo|aprile|maggio|giugno|"
         r"luglio|agosto|settembre|ottobre|novembre|dicembre)"
         r"\s+(\d{4})",
-        testo,
+        testo_normalizzato,
     )
 
     if modello_testuale:
@@ -125,16 +129,28 @@ def estrai_data_scadenza(testo):
     return None
 
 
-def trova_link_inpa(link_iss):
+def scarica_pagina(url):
+    """Scarica una pagina senza interrompere il programma in caso di errore."""
     try:
         risposta = requests.get(
-            link_iss,
+            url,
             headers=INTESTAZIONI,
             timeout=30,
             allow_redirects=True,
         )
         risposta.raise_for_status()
-    except requests.RequestException:
+        return risposta
+    except requests.RequestException as errore:
+        print(f"Avviso: impossibile aprire {url}")
+        print(f"Dettaglio tecnico: {errore}")
+        return None
+
+
+def trova_link_inpa(link_iss):
+    """Cerca un collegamento InPA nella pagina ISS del concorso."""
+    risposta = scarica_pagina(link_iss)
+
+    if risposta is None:
         return None
 
     dominio_finale = urlparse(risposta.url).netloc.lower()
@@ -151,21 +167,19 @@ def trova_link_inpa(link_iss):
         if "inpa.gov.it" in dominio:
             return link
 
-    testo_pagina = risposta.get_text
+    risultato = re.search(
+        r"https?://(?:www\.)?inpa\.gov\.it/[^\s\"'<>]+",
+        risposta.text,
+    )
 
-    if testo_pagina:
-        risultato = re.search(
-            r"https?://(?:www\.)?inpa\.gov\.it/[^\s\"'<>]+",
-            risposta.text,
-        )
-
-        if risultato:
-            return risultato.group(0)
+    if risultato:
+        return risultato.group(0)
 
     return None
 
 
 def controlla_stato_bando(link_iss):
+    """Controlla stato e scadenza sulla pagina InPA, quando disponibile."""
     link_inpa = trova_link_inpa(link_iss)
 
     if not link_inpa:
@@ -175,15 +189,9 @@ def controlla_stato_bando(link_iss):
             "link_verifica": link_iss,
         }
 
-    try:
-        risposta = requests.get(
-            link_inpa,
-            headers=INTESTAZIONI,
-            timeout=30,
-            allow_redirects=True,
-        )
-        risposta.raise_for_status()
-    except requests.RequestException:
+    risposta = scarica_pagina(link_inpa)
+
+    if risposta is None:
         return {
             "stato": "da_verificare",
             "scadenza": None,
@@ -226,14 +234,14 @@ def controlla_stato_bando(link_iss):
 
 
 def controlla_iss():
+    """Trova i possibili concorsi ISS a tempo indeterminato."""
     print("Controllo dei concorsi ISS in corso...")
 
-    risposta = requests.get(
-        URL_ISS,
-        headers=INTESTAZIONI,
-        timeout=30,
-    )
-    risposta.raise_for_status()
+    risposta = scarica_pagina(URL_ISS)
+
+    if risposta is None:
+        print("Il controllo ISS non può essere completato.")
+        return
 
     pagina = BeautifulSoup(risposta.text, "html.parser")
     risultati = []
@@ -251,16 +259,21 @@ def controlla_iss():
 
         testo = " ".join(testo.split())
 
-        if not testo or not posizione_ammessa(testo):
+        if not testo:
+            continue
+
+        if not posizione_ammessa(testo):
             continue
 
         link_iss = urljoin(URL_ISS, collegamento["href"])
-        chiave = testo
+
+        chiave = normalizza_testo(testo)
 
         if chiave in elementi_gia_visti:
             continue
 
         elementi_gia_visti.add(chiave)
+
         verifica = controlla_stato_bando(link_iss)
 
         risultati.append(
@@ -285,6 +298,7 @@ def controlla_iss():
         if risultato["stato"] in ["chiuso", "scaduto"]
     ]
 
+    print()
     print(
         "Possibili concorsi ISS da verificare: "
         f"{len(risultati_utili)}"
@@ -299,10 +313,11 @@ def controlla_iss():
         print(f"Stato: {posizione['stato']}")
 
         if posizione["scadenza"]:
-            print(
-                "Scadenza: "
-                f"{posizione['scadenza'].strftime('%d/%m/%Y')}"
-            )
+            scadenza_formattata = posizione[
+                "scadenza"
+            ].strftime("%d/%m/%Y")
+
+            print(f"Scadenza: {scadenza_formattata}")
         else:
             print("Scadenza: non rilevata automaticamente")
 
@@ -321,13 +336,14 @@ def controlla_iss():
 
     for posizione in risultati_esclusi:
         print()
-        print(f"Escluso: {posizione['stato']}")
+        print(f"Escluso perché: {posizione['stato']}")
 
         if posizione["scadenza"]:
-            print(
-                "Scadenza: "
-                f"{posizione['scadenza'].strftime('%d/%m/%Y')}"
-            )
+            scadenza_formattata = posizione[
+                "scadenza"
+            ].strftime("%d/%m/%Y")
+
+            print(f"Scadenza: {scadenza_formattata}")
 
         print(posizione["titolo"])
         print(
@@ -337,9 +353,9 @@ def controlla_iss():
 
     print()
     print(
-        "Nota: anche i concorsi indicati come aperti devono essere "
-        "controllati nei bandi ufficiali per verificare i titoli "
-        "di studio e la pertinenza biomedica."
+        "Nota: i concorsi aperti o da verificare non vengono "
+        "inseriti automaticamente nel CSV. È ancora necessario "
+        "controllare i titoli di studio e la pertinenza biomedica."
     )
 
 
