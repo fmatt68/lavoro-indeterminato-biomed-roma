@@ -104,7 +104,9 @@ def controlla_iss():
         print("Nessuna posizione ISS verificabile trovata.")
         return
 
-    print(f"Possibili posizioni ISS trovate: {len(risultati)}")
+    print(
+        f"Possibili concorsi ISS da verificare: {len(risultati)}"
+    )
 
     for numero, posizione in enumerate(risultati, start=1):
         print()
