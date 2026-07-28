@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -86,28 +86,29 @@ def posizione_ammessa(testo):
 def estrai_data_scadenza(testo):
     testo = normalizza_testo(testo)
 
-    modelli_numerici = [
-        r"data chiusura candidature\d{1,2}\d{4}",
-        r"scadenza\d{1,2}\d{4}",
-    ]
+    modello_numerico = re.search(
+        r"(?:data chiusura candidature|scadenza)"
+        r"\d{1,2}\d{4}",
+        testo,
+    )
 
-    for modello in modelli_numerici:
-        risultato = re.search(modello, testo)
+    if modello_numerico:
+        giorno, mese, anno = map(
+            int,
+            modello_numerico.groups(),
+        )
 
-        if risultato:
-            giorno, mese, anno = map(int, risultato.groups())
-
-            try:
-                return datetime(anno, mese, giorno).date()
-            except ValueError:
-                return None
+        try:
+            return datetime(anno, mese, giorno).date()
+        except ValueError:
+            return None
 
     modello_testuale = re.search(
-        r"(?:data chiusura candidature|scadenza)[:\s]+"
-        r"(\d{1,2})\s+"
-        r"(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|"
-        r"agosto|settembre|ottobre|novembre|dicembre)\s+"
-        r"(\d{4})",
+        r"(?:data chiusura candidature|scadenza)"
+        r"[:\s]+(\d{1,2})\s+"
+        r"(gennaio|febbraio|marzo|aprile|maggio|giugno|"
+        r"luglio|agosto|settembre|ottobre|novembre|dicembre)"
+        r"\s+(\d{4})",
         testo,
     )
 
@@ -124,10 +125,59 @@ def estrai_data_scadenza(testo):
     return None
 
 
-def controlla_stato_bando(link):
+def trova_link_inpa(link_iss):
     try:
         risposta = requests.get(
-            link,
+            link_iss,
+            headers=INTESTAZIONI,
+            timeout=30,
+            allow_redirects=True,
+        )
+        risposta.raise_for_status()
+    except requests.RequestException:
+        return None
+
+    dominio_finale = urlparse(risposta.url).netloc.lower()
+
+    if "inpa.gov.it" in dominio_finale:
+        return risposta.url
+
+    pagina = BeautifulSoup(risposta.text, "html.parser")
+
+    for collegamento in pagina.find_all("a", href=True):
+        link = urljoin(risposta.url, collegamento["href"])
+        dominio = urlparse(link).netloc.lower()
+
+        if "inpa.gov.it" in dominio:
+            return link
+
+    testo_pagina = risposta.get_text
+
+    if testo_pagina:
+        risultato = re.search(
+            r"https?://(?:www\.)?inpa\.gov\.it/[^\s\"'<>]+",
+            risposta.text,
+        )
+
+        if risultato:
+            return risultato.group(0)
+
+    return None
+
+
+def controlla_stato_bando(link_iss):
+    link_inpa = trova_link_inpa(link_iss)
+
+    if not link_inpa:
+        return {
+            "stato": "da_verificare",
+            "scadenza": None,
+            "link_verifica": link_iss,
+        }
+
+    try:
+        risposta = requests.get(
+            link_inpa,
             headers=INTESTAZIONI,
             timeout=30,
             allow_redirects=True,
@@ -137,6 +187,7 @@ def controlla_stato_bando(link):
         return {
             "stato": "da_verificare",
             "scadenza": None,
+            "link_verifica": link_inpa,
         }
 
     pagina = BeautifulSoup(risposta.text, "html.parser")
@@ -144,29 +195,33 @@ def controlla_stato_bando(link):
         pagina.get_text(" ", strip=True)
     )
 
+    scadenza = estrai_data_scadenza(testo)
+
     if any(frase in testo for frase in FRASI_BANDO_CHIUSO):
         return {
             "stato": "chiuso",
-            "scadenza": estrai_data_scadenza(testo),
+            "scadenza": scadenza,
+            "link_verifica": risposta.url,
         }
-
-    scadenza = estrai_data_scadenza(testo)
 
     if scadenza and scadenza < datetime.now().date():
         return {
             "stato": "scaduto",
             "scadenza": scadenza,
+            "link_verifica": risposta.url,
         }
 
     if scadenza:
         return {
             "stato": "aperto",
             "scadenza": scadenza,
+            "link_verifica": risposta.url,
         }
 
     return {
         "stato": "da_verificare",
         "scadenza": None,
+        "link_verifica": risposta.url,
     }
 
 
@@ -199,20 +254,20 @@ def controlla_iss():
         if not testo or not posizione_ammessa(testo):
             continue
 
-        link = urljoin(URL_ISS, collegamento["href"])
-        chiave = (testo, link)
+        link_iss = urljoin(URL_ISS, collegamento["href"])
+        chiave = testo
 
         if chiave in elementi_gia_visti:
             continue
 
         elementi_gia_visti.add(chiave)
-
-        verifica = controlla_stato_bando(link)
+        verifica = controlla_stato_bando(link_iss)
 
         risultati.append(
             {
                 "titolo": testo,
-                "link": link,
+                "link_iss": link_iss,
+                "link_verifica": verifica["link_verifica"],
                 "stato": verifica["stato"],
                 "scadenza": verifica["scadenza"],
             }
@@ -252,7 +307,11 @@ def controlla_iss():
             print("Scadenza: non rilevata automaticamente")
 
         print(posizione["titolo"])
-        print(posizione["link"])
+        print(f"Fonte ISS: {posizione['link_iss']}")
+        print(
+            "Pagina di verifica: "
+            f"{posizione['link_verifica']}"
+        )
 
     print()
     print(
@@ -260,11 +319,27 @@ def controlla_iss():
         f"{len(risultati_esclusi)}"
     )
 
+    for posizione in risultati_esclusi:
+        print()
+        print(f"Escluso: {posizione['stato']}")
+
+        if posizione["scadenza"]:
+            print(
+                "Scadenza: "
+                f"{posizione['scadenza'].strftime('%d/%m/%Y')}"
+            )
+
+        print(posizione["titolo"])
+        print(
+            "Pagina di verifica: "
+            f"{posizione['link_verifica']}"
+        )
+
     print()
     print(
-        "Nota: anche i concorsi indicati come aperti o da verificare "
-        "devono essere controllati nel bando ufficiale prima "
-        "dell'inserimento nel CSV."
+        "Nota: anche i concorsi indicati come aperti devono essere "
+        "controllati nei bandi ufficiali per verificare i titoli "
+        "di studio e la pertinenza biomedica."
     )
 
 
