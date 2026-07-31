@@ -73,10 +73,7 @@ def normalizza_testo(testo):
     if testo is None:
         return ""
 
-    testo = unicodedata.normalize(
-        "NFKD",
-        str(testo),
-    )
+    testo = unicodedata.normalize("NFKD", str(testo))
 
     testo = "".join(
         carattere
@@ -110,9 +107,7 @@ def estrai_codice(testo):
         risultato = re.search(modello, testo)
 
         if risultato:
-            return " ".join(
-                risultato.group(0).split()
-            )
+            return " ".join(risultato.group(0).split())
 
     return None
 
@@ -150,9 +145,7 @@ def carica_codici_esclusi():
                 codice = riga.get("codice", "").strip().upper()
 
                 if codice:
-                    codici.add(
-                        " ".join(codice.split())
-                    )
+                    codici.add(" ".join(codice.split()))
 
     except (OSError, csv.Error) as errore:
         print(
@@ -194,9 +187,7 @@ def contratto_indeterminato(elemento):
         "",
     )
 
-    testo = normalizza_testo(
-        f"{titolo} {descrizione}"
-    )
+    testo = normalizza_testo(f"{titolo} {descrizione}")
 
     frase_ammessa = any(
         frase in testo
@@ -243,9 +234,7 @@ def motivo_esclusione_automatica(elemento):
         "",
     )
 
-    testo = normalizza_testo(
-        f"{titolo} {descrizione}"
-    )
+    testo = normalizza_testo(f"{titolo} {descrizione}")
 
     for frase in FRASI_PROCEDURALI_ESCLUSE:
         if frase in testo:
@@ -290,9 +279,7 @@ def scarica_pagina(numero_pagina):
         return None
 
     except ValueError:
-        print(
-            "InPA non ha restituito dati JSON validi."
-        )
+        print("InPA non ha restituito dati JSON validi.")
         return None
 
 
@@ -337,8 +324,9 @@ def elimina_duplicati(risultati):
     for elemento in risultati:
         identificativo = estrai_valore(
             elemento,
-            ["id", "concorsoId", "concorso_id"],
-        )
+            ["[_visti = set()
+
+ elemento in risultati    )
 
         titolo = estrai_valore(
             elemento,
@@ -409,9 +397,7 @@ def stampa_procedura(elemento, numero):
 
 
 def controlla_inpa_iss():
-    print(
-        "Monitor incrementale dei concorsi ISS su InPA"
-    )
+    print("Monitor incrementale dei concorsi ISS su InPA")
     print()
     print(
         "Regola: esclusivamente procedure aperte "
@@ -433,9 +419,10 @@ def controlla_inpa_iss():
         if appartiene_a_iss(elemento)
     ]
 
-    tempo_indeterminato = [
-        elemento
-        for elemento in risultati_iss
+    tempo_ind[
+
+ elemento in risultati
+ appartiene   for elemento in risultati_iss
         if contratto_indeterminato(elemento)
     ]
 
@@ -447,12 +434,12 @@ def controlla_inpa_iss():
 
     gia_esaminate = []
     escluse[_automaticamente = ]
-    nuove_procedure = []
+    nuove_pro[cedure = ]
 
     for elemento in procedure_aperte:
         titolo = estrai_valore(
             elemento,
-            ["[ in o", "title"],
+            ["titolo", "title"],
             "",
         )
 
