@@ -1,20 +1,25 @@
 import requests
+import re
 
 URL = "https://www.inpa.gov.it/bandi-e-avvisi/"
 
-
 risposta = requests.get(
     URL,
-    timeout=30,
     headers={
         "User-Agent": (
             "Mozilla/5.0 "
             "(compatible; lavoro-indeterminato-biomed-roma)"
         )
     },
+    timeout=30,
 )
 
 print("STATUS:", risposta.status_code)
 print()
 
-print(risposta.text[:5000])
+for risultato in re.findall(
+    r'https?://[^"\'> ]+',
+    risposta.text,
+):
+    print(risultato)
+``
