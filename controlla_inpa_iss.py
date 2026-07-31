@@ -1,4 +1,5 @@
 import json
+import time
 
 import requests
 
@@ -6,7 +7,7 @@ import requests
 API_URL = (
     "https://portale.inpa.gov.it/"
     "concorsi-smart/api/concorso-public-area/"
-    "search-better?page=0&size=20"
+    "search-better?page=0&size=5"
 )
 
 INTESTAZIONI = {
@@ -20,36 +21,119 @@ INTESTAZIONI = {
     ),
 }
 
-FILTRO_ISS = {
-    "text": "",
-    "categoriaId": "",
-    "regioneId": "",
-    "status": "",
-    "settoreId": "",
-    "provinciaCodice": "",
-    "dateFrom": "",
-    "dateTo": "",
-    "livelliAnzianitaIds": "",
-    "tipoImpiegoId": "",
-    "salaryMin": "",
-    "salaryMax": "",
-    "enteRiferimentoName": "Istituto Superiore di Sanità",
-}
+TEST_DA_ESEGUIRE = [
+    {
+        "nome": "Corpo JSON vuoto",
+        "dati": {},
+    },
+    {
+        "nome": "Solo ricerca testuale ISS",
+        "dati": {
+            "text": "Istituto Superiore di Sanità",
+        },
+    },
+    {
+        "nome": "Solo filtro per ente ISS",
+        "dati": {
+            "enteRiferimentoName": (
+                "Istituto Superiore di Sanità"
+            ),
+        },
+    },
+    {
+        "nome": "Campi non usati impostati a null",
+        "dati": {
+            "text": "",
+            "categoriaId": None,
+            "regioneId": None,
+            "status": None,
+            "settoreId": None,
+            "provinciaCodice": None,
+            "dateFrom": None,
+            "dateTo": None,
+            "livelliAnzianitaIds": None,
+            "tipoImpiegoId": None,
+            "salaryMin": None,
+            "salaryMax": None,
+            "enteRiferimentoName": (
+                "Istituto Superiore di Sanità"
+            ),
+        },
+    },
+    {
+        "nome": "Struttura completa con liste",
+        "dati": {
+            "text": "",
+            "categoriaId": [],
+            "regioneId": [],
+            "status": [],
+            "settoreId": [],
+            "provinciaCodice": "",
+            "dateFrom": None,
+            "dateTo": None,
+            "livelliAnzianitaIds": [],
+            "tipoImpiegoId": [],
+            "salaryMin": None,
+            "salaryMax": None,
+            "enteRiferimentoName": (
+                "Istituto Superiore di Sanità"
+            ),
+        },
+    },
+]
 
 
-def leggi_valore(elemento, possibili_chiavi):
-    for chiave in possibili_chiavi:
-        valore = elemento.get(chiave)
+def mostra_risposta(risposta):
+    print(f"Stato HTTP: {risposta.status_code}")
 
-        if valore not in [None, "", []]:
-            return valore
+    contenuto = risposta.text.strip()
 
-    return "Non disponibile"
+    if risposta.ok:
+        try:
+            dati = risposta.json()
+        except ValueError:
+            print("Risposta ricevuta, ma non in formato JSON.")
+            print(contenuto[:1000])
+            return False
 
+        if isinstance(dati, dict):
+            totale = dati.get("totalElements")
+            risultati = dati.get("content", [])
 
-def mostra_errore(risposta):
-    print()
-    print("Risposta restituita dal server InPA:")
+            print(f"Risultati totali: {totale}")
+            print(
+                "Risultati nella prima pagina: "
+                f"{len(risultati)}"
+            )
+
+            if risultati:
+                primo = risultati[0]
+
+                print()
+                print("Primo risultato ricevuto:")
+                print(
+                    "Titolo: "
+                    f"{primo.get('titolo', 'Non disponibile')}"
+                )
+                print(
+                    "Enti: "
+                    f"{primo.get('entiRiferimento', 'Non disponibile')}"
+                )
+
+            return True
+
+        print(
+            "Risposta JSON ricevuta, "
+            "ma con struttura inattesa."
+        )
+        print(
+            json.dumps(
+                dati,
+                indent=2,
+                ensure_ascii=False,
+            )[:1000]
+        )
+        return True
 
     try:
         errore = risposta.json()
@@ -61,24 +145,25 @@ def mostra_errore(risposta):
                 ensure_ascii=False,
             )
         )
-
     except ValueError:
-        contenuto = risposta.text.strip()
-
         if contenuto:
-            print(contenuto[:5000])
+            print(contenuto[:1000])
         else:
             print("Nessun dettaglio restituito dal server.")
 
+    return False
 
-def controlla_inpa_iss():
-    print("Ricerca diretta dei concorsi ISS su InPA")
+
+def esegui_test(nome, dati):
     print()
+    print("=" * 60)
+    print(f"TEST: {nome}")
+    print("=" * 60)
 
-    print("Filtro inviato:")
+    print("Corpo JSON:")
     print(
         json.dumps(
-            FILTRO_ISS,
+            dati,
             indent=2,
             ensure_ascii=False,
         )
@@ -89,117 +174,60 @@ def controlla_inpa_iss():
         risposta = requests.post(
             API_URL,
             headers=INTESTAZIONI,
-            json=FILTRO_ISS,
+            json=dati,
             timeout=30,
         )
-
     except requests.RequestException as errore:
-        print("Errore durante il collegamento all'API InPA.")
+        print("Errore di collegamento.")
         print(f"Dettaglio: {errore}")
-        return
+        return False
 
-    print(f"Stato HTTP: {risposta.status_code}")
+    return mostra_risposta(risposta)
+
+
+def diagnostica_api_inpa():
+    print("Diagnostica dei filtri API InPA")
+    print()
     print(
-        "Tipo di contenuto: "
-        f"{risposta.headers.get('Content-Type', 'non indicato')}"
+        "Questo test non modifica alcun file "
+        "del repository."
     )
 
-    if not risposta.ok:
-        mostra_errore(risposta)
-        return
+    test_riusciti = []
 
-    try:
-        dati = risposta.json()
+    for test in TEST_DA_ESEGUIRE:
+        riuscito = esegui_test(
+            test["nome"],
+            test["dati"],
+        )
 
-    except ValueError:
-        print()
-        print("InPA non ha restituito dati JSON validi.")
-        print(risposta.text[:5000])
-        return
+        if riuscito:
+            test_riusciti.append(test["nome"])
 
-    if not isinstance(dati, dict):
-        print()
-        print("Formato della risposta non riconosciuto.")
-        print(f"Tipo ricevuto: {type(dati).__name__}")
-        return
-
-    risultati = dati.get("content", [])
-    totale = dati.get("totalElements", 0)
-    pagine = dati.get("totalPages", 0)
+        time.sleep(1)
 
     print()
-    print(f"Risultati totali dichiarati da InPA: {totale}")
-    print(f"Pagine disponibili: {pagine}")
-    print(
-        "Risultati ricevuti nella prima pagina: "
-        f"{len(risultati)}"
-    )
+    print("=" * 60)
+    print("RIEPILOGO")
+    print("=" * 60)
 
-    if not risultati:
-        print()
+    if test_riusciti:
+        print("Test accettati dall'API:")
+
+        for nome in test_riusciti:
+            print(f"- {nome}")
+    else:
         print(
-            "La richiesta è stata accettata, "
-            "ma non ha restituito risultati."
+            "Nessuno dei corpi JSON provati "
+            "è stato accettato dall'API."
         )
-        return
-
-    for numero, elemento in enumerate(
-        risultati,
-        start=1,
-    ):
-        identificativo = leggi_valore(
-            elemento,
-            ["id", "concorsoId", "concorso_id"],
-        )
-
-        titolo = leggi_valore(
-            elemento,
-            ["titolo", "title", "descrizione"],
-        )
-
-        enti = leggi_valore(
-            elemento,
-            ["entiRiferimento", "enteRiferimento"],
-        )
-
-        stato = leggi_valore(
-            elemento,
-            ["status", "stato", "descrizioneStato"],
-        )
-
-        pubblicazione = leggi_valore(
-            elemento,
-            ["dataPubblicazione", "publicationDate"],
-        )
-
-        scadenza = leggi_valore(
-            elemento,
-            ["dataScadenza", "expirationDate"],
-        )
-
-        print()
-        print(f"Risultato {numero}")
-        print(f"ID: {identificativo}")
-        print(f"Titolo: {titolo}")
-        print(f"Ente: {enti}")
-        print(f"Stato: {stato}")
-        print(f"Pubblicazione: {pubblicazione}")
-        print(f"Scadenza: {scadenza}")
-
-        if identificativo != "Non disponibile":
-            print(
-                "Pagina InPA: "
-                "https://www.inpa.gov.it/bandi-e-avvisi/"
-                "dettaglio-bando-avviso/"
-                f"?concorso_id={identificativo}"
-            )
 
     print()
     print(
-        "Test completato. "
-        "Nessun file del repository è stato modificato."
+        "Diagnostica completata. "
+        "Nessun CSV è stato modificato."
     )
 
 
 if __name__ == "__main__":
-    controlla_inpa_iss()
+    diagnostica_api_inpa()
