@@ -13,7 +13,7 @@ INTESTAZIONI = {
     "Accept": "application/json, text/plain, */*",
     "Content-Type": "application/json",
     "Origin": "https://www.inpa.gov.it",
-    "Referer": "https://www.inpa.gov.it/",
+    "Referer": "https://www.inpa.gov.it/bandi-e-avvisi/",
     "User-Agent": (
         "Mozilla/5.0 "
         "(compatible; lavoro-indeterminato-biomed-roma/1.0)"
@@ -29,7 +29,7 @@ FILTRO_ISS = {
     "provinciaCodice": "",
     "dateFrom": "",
     "dateTo": "",
-    "livelliAnzianitaIds": [],
+    "livelliAnzianitaIds": "",
     "tipoImpiegoId": "",
     "salaryMin": "",
     "salaryMax": "",
@@ -47,38 +47,32 @@ def leggi_valore(elemento, possibili_chiavi):
     return "Non disponibile"
 
 
-def mostra_risposta_errore(risposta):
+def mostra_errore(risposta):
     print()
     print("Risposta restituita dal server InPA:")
-    print()
-
-    contenuto = risposta.text.strip()
-
-    if not contenuto:
-        print("Il server non ha restituito alcun testo.")
-        return
 
     try:
-        dati_errore = risposta.json()
+        errore = risposta.json()
 
         print(
             json.dumps(
-                dati_errore,
+                errore,
                 indent=2,
                 ensure_ascii=False,
             )
         )
 
     except ValueError:
-        print(contenuto[:5000])
+        contenuto = risposta.text.strip()
+
+        if contenuto:
+            print(contenuto[:5000])
+        else:
+            print("Nessun dettaglio restituito dal server.")
 
 
 def controlla_inpa_iss():
     print("Ricerca diretta dei concorsi ISS su InPA")
-    print()
-
-    print("Indirizzo API:")
-    print(API_URL)
     print()
 
     print("Filtro inviato:")
@@ -111,7 +105,7 @@ def controlla_inpa_iss():
     )
 
     if not risposta.ok:
-        mostra_risposta_errore(risposta)
+        mostra_errore(risposta)
         return
 
     try:
@@ -119,44 +113,34 @@ def controlla_inpa_iss():
 
     except ValueError:
         print()
-        print("InPA non ha restituito una risposta JSON valida.")
-        print()
-        print("Primi 5000 caratteri della risposta:")
+        print("InPA non ha restituito dati JSON validi.")
         print(risposta.text[:5000])
         return
 
     if not isinstance(dati, dict):
         print()
-        print("Formato della risposta InPA non riconosciuto.")
+        print("Formato della risposta non riconosciuto.")
         print(f"Tipo ricevuto: {type(dati).__name__}")
-        print()
-        print(
-            json.dumps(
-                dati,
-                indent=2,
-                ensure_ascii=False,
-            )[:5000]
-        )
         return
 
-    numero_totale = dati.get("totalElements", 0)
-    numero_pagine = dati.get("totalPages", 0)
     risultati = dati.get("content", [])
+    totale = dati.get("totalElements", 0)
+    pagine = dati.get("totalPages", 0)
 
     print()
+    print(f"Risultati totali dichiarati da InPA: {totale}")
+    print(f"Pagine disponibili: {pagine}")
     print(
-        "Risultati totali dichiarati da InPA: "
-        f"{numero_totale}"
-    )
-    print(f"Pagine disponibili: {numero_pagine}")
-    print(
-        "Risultati ricevuti in questa pagina: "
+        "Risultati ricevuti nella prima pagina: "
         f"{len(risultati)}"
     )
 
     if not risultati:
         print()
-        print("Nessun concorso ISS restituito dalla ricerca.")
+        print(
+            "La richiesta è stata accettata, "
+            "ma non ha restituito risultati."
+        )
         return
 
     for numero, elemento in enumerate(
@@ -173,6 +157,11 @@ def controlla_inpa_iss():
             ["titolo", "title", "descrizione"],
         )
 
+        enti = leggi_valore(
+            elemento,
+            ["entiRiferimento", "enteRiferimento"],
+        )
+
         stato = leggi_valore(
             elemento,
             ["status", "stato", "descrizioneStato"],
@@ -186,11 +175,6 @@ def controlla_inpa_iss():
         scadenza = leggi_valore(
             elemento,
             ["dataScadenza", "expirationDate"],
-        )
-
-        enti = leggi_valore(
-            elemento,
-            ["entiRiferimento", "enteRiferimento"],
         )
 
         print()
@@ -213,7 +197,7 @@ def controlla_inpa_iss():
     print()
     print(
         "Test completato. "
-        "Nessun file CSV è stato modificato."
+        "Nessun file del repository è stato modificato."
     )
 
 
