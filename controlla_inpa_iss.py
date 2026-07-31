@@ -22,4 +22,3 @@ for risultato in re.findall(
     risposta.text,
 ):
     print(risultato)
-``
