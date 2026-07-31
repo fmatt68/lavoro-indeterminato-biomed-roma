@@ -93,4 +93,3 @@ def controlla_configurazione_inpa():
 
 if __name__ == "__main__":
     controlla_configurazione_inpa()
-`
