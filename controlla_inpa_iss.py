@@ -1,3 +1,5 @@
+import json
+
 import requests
 
 
@@ -45,8 +47,48 @@ def leggi_valore(elemento, possibili_chiavi):
     return "Non disponibile"
 
 
+def mostra_risposta_errore(risposta):
+    print()
+    print("Risposta restituita dal server InPA:")
+    print()
+
+    contenuto = risposta.text.strip()
+
+    if not contenuto:
+        print("Il server non ha restituito alcun testo.")
+        return
+
+    try:
+        dati_errore = risposta.json()
+
+        print(
+            json.dumps(
+                dati_errore,
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+
+    except ValueError:
+        print(contenuto[:5000])
+
+
 def controlla_inpa_iss():
     print("Ricerca diretta dei concorsi ISS su InPA")
+    print()
+
+    print("Indirizzo API:")
+    print(API_URL)
+    print()
+
+    print("Filtro inviato:")
+    print(
+        json.dumps(
+            FILTRO_ISS,
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     print()
 
     try:
@@ -57,43 +99,70 @@ def controlla_inpa_iss():
             timeout=30,
         )
 
-        print(f"Stato HTTP: {risposta.status_code}")
-        risposta.raise_for_status()
-
     except requests.RequestException as errore:
-        print("Errore durante la richiesta all'API InPA.")
+        print("Errore durante il collegamento all'API InPA.")
         print(f"Dettaglio: {errore}")
+        return
+
+    print(f"Stato HTTP: {risposta.status_code}")
+    print(
+        "Tipo di contenuto: "
+        f"{risposta.headers.get('Content-Type', 'non indicato')}"
+    )
+
+    if not risposta.ok:
+        mostra_risposta_errore(risposta)
         return
 
     try:
         dati = risposta.json()
 
     except ValueError:
+        print()
         print("InPA non ha restituito una risposta JSON valida.")
         print()
-        print("Primi 1000 caratteri della risposta:")
-        print(risposta.text[:1000])
+        print("Primi 5000 caratteri della risposta:")
+        print(risposta.text[:5000])
         return
 
     if not isinstance(dati, dict):
+        print()
         print("Formato della risposta InPA non riconosciuto.")
-        print(type(dati).__name__)
+        print(f"Tipo ricevuto: {type(dati).__name__}")
+        print()
+        print(
+            json.dumps(
+                dati,
+                indent=2,
+                ensure_ascii=False,
+            )[:5000]
+        )
         return
 
     numero_totale = dati.get("totalElements", 0)
     numero_pagine = dati.get("totalPages", 0)
     risultati = dati.get("content", [])
 
-    print(f"Risultati totali dichiarati da InPA: {numero_totale}")
+    print()
+    print(
+        "Risultati totali dichiarati da InPA: "
+        f"{numero_totale}"
+    )
     print(f"Pagine disponibili: {numero_pagine}")
-    print(f"Risultati ricevuti in questa pagina: {len(risultati)}")
+    print(
+        "Risultati ricevuti in questa pagina: "
+        f"{len(risultati)}"
+    )
 
     if not risultati:
         print()
         print("Nessun concorso ISS restituito dalla ricerca.")
         return
 
-    for numero, elemento in enumerate(risultati, start=1):
+    for numero, elemento in enumerate(
+        risultati,
+        start=1,
+    ):
         identificativo = leggi_valore(
             elemento,
             ["id", "concorsoId", "concorso_id"],
@@ -143,7 +212,8 @@ def controlla_inpa_iss():
 
     print()
     print(
-        "Test completato. Nessun file CSV è stato modificato."
+        "Test completato. "
+        "Nessun file CSV è stato modificato."
     )
 
 
