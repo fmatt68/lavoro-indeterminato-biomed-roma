@@ -3,11 +3,7 @@ import re
 import requests
 
 
-URL_SCRIPT = (
-    "https://www.inpa.gov.it/wp-content/plugins/"
-    "dro-dashboard/modules/dro-cerca-bandi/assets/js/"
-    "dro-cerca-bandi.js?ver=6.8.3"
-)
+URL_INPA = "https://www.inpa.gov.it/bandi-e-avvisi/"
 
 INTESTAZIONI = {
     "User-Agent": (
@@ -16,127 +12,85 @@ INTESTAZIONI = {
     )
 }
 
-TERMINI = [
-    "getBandi(",
-    "getBandi ",
-    "apiUrl",
-    "api_url",
-    "bandiUrl",
-    "bandi_url",
-    "endpoint",
-    "JSON.stringify",
-    "entiRiferimento",
-    "enteRiferimento",
-    "dataScadenza",
-]
 
+def controlla_configurazione_inpa():
+    print("Ricerca configurazione API InPA")
+    print()
 
-def scarica_script():
     try:
         risposta = requests.get(
-            URL_SCRIPT,
+            URL_INPA,
             headers=INTESTAZIONI,
             timeout=30,
         )
         risposta.raise_for_status()
-        return risposta.text
 
     except requests.RequestException as errore:
-        print("Errore durante il download dello script InPA")
+        print("Impossibile leggere la pagina InPA.")
         print(f"Dettaglio: {errore}")
-        return None
+        return
 
+    testo = risposta.text
 
-def mostra_occorrenze(testo, termine):
-    testo_minuscolo = testo.lower()
-    termine_minuscolo = termine.lower()
-    posizione_iniziale = 0
-    numero = 0
-
-    while True:
-        posizione = testo_minuscolo.find(
-            termine_minuscolo,
-            posizione_iniziale,
-        )
-
-        if posizione == -1:
-            break
-
-        numero += 1
-
-        inizio = max(0, posizione - 500)
-        fine = min(
-            len(testo),
-            posizione + len(termine) + 1000,
-        )
-
-        frammento = testo[inizio:fine]
-        frammento = " ".join(frammento.split())
-
-        print()
-        print(f"Occorrenza {numero}")
-        print(frammento)
-
-        posizione_iniziale = posizione + len(termine)
-
-    if numero == 0:
-        print("Nessuna occorrenza trovata.")
-
-    return numero
-
-
-def cerca_url_api(testo):
     modelli = [
-        r"https?://[^\s\"'<>]+",
-        r"/wp-json/[^\s\"'<>]+",
-        r"/wp-admin/admin-ajax\.php",
-        r"/api/[^\s\"'<>]+",
+        r"var\s+inpaVars\s*=\s*(\{.*?\});",
+        r"inpaVars\s*=\s*(\{.*?\});",
+        r'"apiurl"\s*:\s*"([^"]+)"',
+        r"'apiurl'\s*:\s*'([^']+)'",
+        r"apiurl\s*:\s*[^'\"]+['\"]",
     ]
 
     risultati = []
 
     for modello in modelli:
-        for valore in re.findall(modello, testo):
-            valore = valore.rstrip("),;]}")
+        corrispondenze = re.findall(
+            modello,
+            testo,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+        for valore in corrispondenze:
+            valore = " ".join(valore.split())
 
             if valore not in risultati:
                 risultati.append(valore)
 
-    print()
-    print("URL ed endpoint individuati:")
-    
-    if not risultati:
-        print("Nessun URL o endpoint individuato.")
-        return
+    if risultati:
+        print("Configurazioni potenzialmente utili:")
 
-    for valore in risultati:
-        print(f"- {valore}")
+        for numero, valore in enumerate(
+            risultati,
+            start=1,
+        ):
+            print()
+            print(f"Risultato {numero}")
+            print(valore)
+    else:
+        print(
+            "Il valore apiurl non è stato trovato "
+            "direttamente nella pagina."
+        )
 
+    posizione = testo.lower().find("inpavars")
 
-def analizza_script():
-    print("Ricerca chiamata API InPA")
-    print()
+    if posizione != -1:
+        inizio = max(0, posizione - 500)
+        fine = min(len(testo), posizione + 1500)
 
-    testo = scarica_script()
+        frammento = testo[inizio:fine]
+        frammento = " ".join(frammento.split())
 
-    if testo is None:
-        return
-
-    print(f"Dimensione script: {len(testo)} caratteri")
-
-    cerca_url_api(testo)
-
-    for termine in TERMINI:
         print()
-        print("=" * 60)
-        print(f"RICERCA: {termine}")
-        print("=" * 60)
-
-        mostra_occorrenze(testo, termine)
+        print("Frammento contenente inpaVars:")
+        print(frammento)
+    else:
+        print()
+        print("La stringa inpaVars non compare nella pagina.")
 
     print()
-    print("Analisi mirata completata.")
+    print("Ricerca completata.")
 
 
 if __name__ == "__main__":
-    analizza_script()
+    controlla_configurazione_inpa()
+`
