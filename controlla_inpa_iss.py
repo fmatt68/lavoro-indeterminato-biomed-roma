@@ -74,7 +74,6 @@ def normalizza_testo(testo):
         return ""
 
     testo = unicodedata.normalize("NFKD", str(testo))
-
     testo = "".join(
         carattere
         for carattere in testo
@@ -214,9 +213,7 @@ def procedura_aperta(elemento):
         return False
 
     if data_scadenza.tzinfo is None:
-        data_scadenza = data_scadenza.replace(
-            tzinfo=timezone.utc
-        )
+        data_scadenza = data_scadenza.replace(tzinfo=timezone.utc)
 
     return data_scadenza >= datetime.now(timezone.utc)
 
@@ -295,10 +292,8 @@ def scarica_tutti_i_risultati():
         if dati is None:
             break
 
-        risultati[ 0
-_pagine = None
-_dichiarato = 0
-totale_pagine = dati.get("totalPages", 0)
+        risultati = dati.get("content", [])
+        totale_pagine = dati.get("totalPages", 0)
         totale_dichiarato = dati.get(
             "totalElements",
             totale_dichiarato,
@@ -324,9 +319,8 @@ def elimina_duplicati(risultati):
     for elemento in risultati:
         identificativo = estrai_valore(
             elemento,
-            ["[_visti = set()
-
- elemento in risultati    )
+            ["id", "concorsoId", "concorso_id"],
+        )
 
         titolo = estrai_valore(
             elemento,
@@ -419,10 +413,9 @@ def controlla_inpa_iss():
         if appartiene_a_iss(elemento)
     ]
 
-    tempo_ind[
-
- elemento in risultati
- appartiene   for elemento in risultati_iss
+    tempo_indeterminato = [
+        elemento
+        for elemento in risultati_iss
         if contratto_indeterminato(elemento)
     ]
 
@@ -433,8 +426,8 @@ def controlla_inpa_iss():
     ]
 
     gia_esaminate = []
-    escluse[_automaticamente = ]
-    nuove_pro[cedure = ]
+    escluse_automaticamente = []
+    nuove_procedure = []
 
     for elemento in procedure_aperte:
         titolo = estrai_valore(
