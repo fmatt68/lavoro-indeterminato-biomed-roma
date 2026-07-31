@@ -2,6 +2,8 @@ name: Controllo InPA ISS
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "20 5 * * *"
 
 jobs:
   controllo:
